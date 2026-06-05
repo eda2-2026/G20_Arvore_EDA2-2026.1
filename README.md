@@ -58,11 +58,20 @@ python main.py -c benchmark -n 50000
 python main.py -n 10000 -s 123
 
 # Gerar gráficos de benchmark (Matplotlib) e exportar resultados para CSV
-python benchmark_chart.py --salvar --csv
+python benchmark_chart.py
+
+# Ver os resultados do benchmark_chart
+O script `benchmark_chart.py` gera os gráficos PNG e um relatório CSV na pasta `graficos/`.
+- `graficos/benchmark_arvores_aleatorio.png`
+- `graficos/benchmark_arvores_ordenado.png`
+- `graficos/resultados_benchmark.csv`
 
 # Executar a suíte de testes automatizados (validação rigorosa de conflitos)
 pytest tests/
-```
+
+# Modo interativo de agenda
+python main.py -c in
+python main.py -c in --tree RB
 
 ## Cenários de Agendamento
 

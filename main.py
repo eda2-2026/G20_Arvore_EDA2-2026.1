@@ -393,8 +393,8 @@ def main():
     parser = argparse.ArgumentParser(description="Simulador de Agendamento com Árvores de Intervalos AVL e Rubro-Negra")
     parser.add_argument("-n", type=int, default=5000, help="Quantidade de consultas a processar")
     parser.add_argument("-s", type=int, default=123, help="Seed para geração de números pseudo-aleatórios")
-    parser.add_argument("-c", type=str, default="all", choices=["all", "A", "B", "C", "benchmark", "interactive"], 
-                        help="Cenário de teste: all (Todos), A (Alta Escrita), B (Alta Leitura), C (Fluxo Misto), benchmark (Comparativo), interactive (Agendamento manual)")
+    parser.add_argument("-c", type=str, default="all", choices=["all", "A", "B", "C", "benchmark", "in"], 
+                        help="Cenário de teste: all (Todos), A (Alta Escrita), B (Alta Leitura), C (Fluxo Misto), benchmark (Comparativo), in (Agendamento manual)")
     parser.add_argument("--tree", type=str, default="AVL", choices=["AVL", "RB"],
                         help="Tipo de árvore usada no modo interativo: AVL ou RB (Red-Black)")
 
@@ -408,7 +408,7 @@ def main():
         executar_cenario_b(args.n, args.s)
     elif args.c == "C":
         executar_cenario_c(args.n, args.s)
-    elif args.c == "interactive":
+    elif args.c == "in":
         executar_interativo(args.n, args.s, args.tree)
     else:
         executar_benchmark_completo(args.n, args.s)
