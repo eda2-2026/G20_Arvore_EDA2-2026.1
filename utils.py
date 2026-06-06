@@ -61,4 +61,24 @@ def rodar_benchmark_arvore(
         "tempo_busca": tempo_busca,
         "tempo_remocao": tempo_remocao,
         "altura": altura_final,
+        "rotacoes": arvore.rotacoes,
+        "tamanho": arvore.tamanho(),
     }
+
+def exportar_benchmark_csv(resultados: List[Dict[str, Any]], caminho: Path) -> None:
+    """Exporta resultados de benchmark para CSV."""
+    if not resultados:
+        return
+    import csv
+    with caminho.open("w", newline='', encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=resultados[0].keys())
+        writer.writeheader()
+        writer.writerows(resultados)
+    print(f"Resultados exportados para {caminho}")
+
+def exportar_benchmark_json(resultados: List[Dict[str, Any]], caminho: Path) -> None:
+    """Exporta resultados de benchmark para JSON."""
+    import json
+    with caminho.open("w", encoding="utf-8") as f:
+        json.dump(resultados, f, indent=2, ensure_ascii=False)
+    print(f"Resultados exportados para {caminho}")
