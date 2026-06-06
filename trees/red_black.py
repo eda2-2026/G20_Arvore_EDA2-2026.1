@@ -324,3 +324,101 @@ class RedBlackTree:
             self._em_ordem_recursivo(nodo.esquerda, resultado)
             resultado.append(nodo.consulta)
             self._em_ordem_recursivo(nodo.direita, resultado)
+
+    def buscar_todos_conflitos(self, intervalo: Intervalo) -> List[Consulta]:
+        """Retorna todas as consultas que conflitam com o intervalo dado."""
+        resultado: List[Consulta] = []
+        self._buscar_todos_recursivo(self.raiz, intervalo, resultado)
+        return resultado
+
+    def _buscar_todos_recursivo(self, nodo: Node, intervalo: Intervalo, resultado: List[Consulta]) -> None:
+        if nodo == self.NIL or nodo is None:
+            return
+            
+        if nodo.esquerda != self.NIL and nodo.esquerda.max_end > intervalo.inicio:
+            self._buscar_todos_recursivo(nodo.esquerda, intervalo, resultado)
+            
+        if nodo.intervalo.sobrepoe(intervalo):
+            resultado.append(nodo.consulta)
+            
+        if nodo.intervalo.inicio < intervalo.fim:
+            self._buscar_todos_recursivo(nodo.direita, intervalo, resultado)
+
+    def buscar_por_intervalo(self, inicio: int, fim: int) -> List[Consulta]:
+        """Retorna todas as consultas cujo intervalo está inteiramente contido em [inicio, fim)."""
+        resultado: List[Consulta] = []
+        self._buscar_por_intervalo_recursivo(self.raiz, inicio, fim, resultado)
+        return resultado
+
+    def _buscar_por_intervalo_recursivo(self, nodo: Node, inicio: int, fim: int, resultado: List[Consulta]) -> None:
+        if nodo == self.NIL or nodo is None:
+            return
+            
+        if nodo.intervalo.inicio >= inicio:
+            self._buscar_por_intervalo_recursivo(nodo.esquerda, inicio, fim, resultado)
+            
+        if nodo.intervalo.inicio >= inicio and nodo.intervalo.fim <= fim:
+            resultado.append(nodo.consulta)
+            
+        if nodo.intervalo.inicio < fim:
+            self._buscar_por_intervalo_recursivo(nodo.direita, inicio, fim, resultado)
+
+    def tamanho(self) -> int:
+        """Retorna o número de nós (consultas) na árvore."""
+        return self._tamanho_recursivo(self.raiz)
+
+    def _tamanho_recursivo(self, nodo: Node) -> int:
+        if nodo == self.NIL or nodo is None:
+            return 0
+        return 1 + self._tamanho_recursivo(nodo.esquerda) + self._tamanho_recursivo(nodo.direita)
+
+    def verificar_integridade(self) -> bool:
+        """Verifica propriedades: raiz preta, sem vermelho adjacente, 
+        black-height uniforme, BST ordering e max_end corretos."""
+        if self.raiz != self.NIL and self.raiz.color is True:
+            return False
+        return (self._verificar_bst_rb(self.raiz, float('-inf'), float('inf')) and
+                self._verificar_rb_cores(self.raiz)[0] and
+                self._verificar_max_end_rb(self.raiz))
+
+    def _verificar_bst_rb(self, nodo: Node, min_val: float, max_val: float) -> bool:
+        if nodo == self.NIL or nodo is None:
+            return True
+        chave = nodo.intervalo.inicio
+        if not (min_val <= chave <= max_val):
+            return False
+        return (self._verificar_bst_rb(nodo.esquerda, min_val, chave) and
+                self._verificar_bst_rb(nodo.direita, chave, max_val))
+
+    def _verificar_rb_cores(self, nodo: Node) -> tuple[bool, int]:
+        if nodo == self.NIL or nodo is None:
+            return True, 1
+            
+        if nodo.color is True:
+            if (nodo.esquerda != self.NIL and nodo.esquerda.color is True) or \
+               (nodo.direita != self.NIL and nodo.direita.color is True):
+                return False, 0
+                
+        ok_esq, pretos_esq = self._verificar_rb_cores(nodo.esquerda)
+        ok_dir, pretos_dir = self._verificar_rb_cores(nodo.direita)
+        
+        if not ok_esq or not ok_dir:
+            return False, 0
+            
+        if pretos_esq != pretos_dir:
+            return False, 0
+            
+        return True, pretos_esq + (1 if nodo.color is False else 0)
+
+    def _verificar_max_end_rb(self, nodo: Node) -> bool:
+        if nodo == self.NIL or nodo is None:
+            return True
+            
+        val_esq = nodo.esquerda.max_end if nodo.esquerda != self.NIL else 0
+        val_dir = nodo.direita.max_end if nodo.direita != self.NIL else 0
+        esperado = max(nodo.intervalo.fim, val_esq, val_dir)
+        
+        if nodo.max_end != esperado:
+            return False
+            
+        return self._verificar_max_end_rb(nodo.esquerda) and self._verificar_max_end_rb(nodo.direita)
