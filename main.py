@@ -194,12 +194,12 @@ def executar_cenario_b(n: int, seed: int):
     print(f"  - Consultas geradas: {len(consultas)}")
     print(f"  - Intervalos de busca: {len(intervalos_busca)}")
     print("\nResultado do benchmark de leitura:")
-    print("| Árvore      | Altura | Inserção (ms) | Busca (200) (ms) |")
-    print("|-------------|--------|---------------|------------------|")
+    print("| Árvore      | Altura | Tamanho | Inserção (ms) | Busca (200) (ms) | Rotações |")
+    print("|-------------|--------|---------|---------------|------------------|----------|")
 
     for nome, classe_arvore in arvores.items():
         res = rodar_benchmark_arvore(classe_arvore, consultas, intervalos_busca, [])
-        print(f"| {nome:6s} | {res['altura']:6d} | {res['tempo_insercao']*1000:20.3f} | {res['tempo_busca']*1000:21.3f} |")
+        print(f"| {nome:11s} | {res['altura']:6d} | {res['tamanho']:7d} | {res['tempo_insercao']*1000:13.3f} | {res['tempo_busca']*1000:16.3f} | {res['rotacoes']:8d} |")
 
 
 def executar_cenario_c(n: int, seed: int):
@@ -215,8 +215,8 @@ def executar_cenario_c(n: int, seed: int):
     print(f"  - Consultas geradas: {len(consultas)}")
     print(f"  - Consultas removidas: {len(consultas_remocao)}")
     print("\nResultado do benchmark misto:")
-    print("| Árvore      | Altura Inicial | Altura Final | Remoção (ms) |")
-    print("|-------------|----------------|--------------|--------------|")
+    print("| Árvore      | Altura Ini | Altura Fim | Tamanho Fim | Remoção (ms) | Rotações Total |")
+    print("|-------------|------------|------------|-------------|--------------|----------------|")
 
     for nome, classe_arvore in arvores.items():
         arvore = classe_arvore()
@@ -230,10 +230,11 @@ def executar_cenario_c(n: int, seed: int):
         tempo = __import__("time").perf_counter() - inicio
 
         altura_fim = arvore.altura()
-        print(f"| {nome:6s} | {altura_ini:14d} | {altura_fim:12d} | {tempo*1000:18.3f} |")
+        tamanho_fim = arvore.tamanho()
+        print(f"| {nome:11s} | {altura_ini:10d} | {altura_fim:10d} | {tamanho_fim:11d} | {tempo*1000:12.3f} | {arvore.rotacoes:14d} |")
 
 
-def executar_benchmark_completo(n: int, seed: int):
+def executar_benchmark_completo(n: int, seed: int, export_format: Optional[str] = None):
     """Benchmark comparativo das Árvores de Intervalos."""
     imprimir_cabecalho(f"Benchmark Comparativo Geral (N = {n})")
 
@@ -253,20 +254,53 @@ def executar_benchmark_completo(n: int, seed: int):
     print(f"  - Intervalos de busca: {len(intervalos_busca)}")
     print(f"  - Consultas removidas: {len(consultas_remocao)}")
     print("\nTabela comparativa:")
-    print("| Árvore      | Altura | Inserção (ms) | Busca (500) (ms) | Remoção (200) (ms) |")
-    print("|-------------|--------|---------------|-------------------|---------------------|")
+    print("| Árvore      | Altura | Tamanho | Inserção (ms) | Busca (500) (ms) | Remoção (200) (ms) | Rotações |")
+    print("|-------------|--------|---------|---------------|------------------|--------------------|----------|")
+
+    resultados_export = []
+    from utils import exportar_benchmark_csv, exportar_benchmark_json
+    from pathlib import Path
 
     for nome, classe_arvore in arvores.items():
         res = rodar_benchmark_arvore(classe_arvore, consultas, intervalos_busca, consultas_remocao)
-        print(f"| {nome:6s} | {res['altura']:6d} | {res['tempo_insercao']*1000:14.3f} | {res['tempo_busca']*1000:17.3f} | {res['tempo_remocao']*1000:19.3f} |")
+        print(f"| {nome:11s} | {res['altura']:6d} | {res['tamanho']:7d} | {res['tempo_insercao']*1000:13.3f} | {res['tempo_busca']*1000:16.3f} | {res['tempo_remocao']*1000:18.3f} | {res['rotacoes']:8d} |")
+        res["arvore"] = nome
+        resultados_export.append(res)
+        
+    if export_format == "csv":
+        exportar_benchmark_csv(resultados_export, Path("benchmark_results.csv"))
+    elif export_format == "json":
+        exportar_benchmark_json(resultados_export, Path("benchmark_results.json"))
 
 
-def executar_todos_cenarios(n: int, seed: int):
+def executar_cenario_d(n: int, seed: int):
+    """Cenário D: Comparação Ordenado vs Aleatório.
+    Mostra impacto da ordem de inserção em altura e rotações."""
+    imprimir_cabecalho(f"Cenário D: Ordenado vs Aleatório (N = {n})")
+    
+    consultas_ordenadas = gerar_consultas(n, ordenado=True, seed=seed)
+    consultas_aleatorias = gerar_consultas(n, ordenado=False, seed=seed)
+    arvores = {"AVL": AVL, "Red-Black": RedBlackTree}
+    
+    print("\nTabela comparativa (Inserção):")
+    print("| Árvore      | Ordem     | Altura | Tamanho | Inserção (ms) | Rotações |")
+    print("|-------------|-----------|--------|---------|---------------|----------|")
+    
+    for nome, classe_arvore in arvores.items():
+        res_ord = rodar_benchmark_arvore(classe_arvore, consultas_ordenadas, [], [])
+        print(f"| {nome:11s} | Ordenada  | {res_ord['altura']:6d} | {res_ord['tamanho']:7d} | {res_ord['tempo_insercao']*1000:13.3f} | {res_ord['rotacoes']:8d} |")
+        
+        res_ale = rodar_benchmark_arvore(classe_arvore, consultas_aleatorias, [], [])
+        print(f"| {nome:11s} | Aleatória | {res_ale['altura']:6d} | {res_ale['tamanho']:7d} | {res_ale['tempo_insercao']*1000:13.3f} | {res_ale['rotacoes']:8d} |")
+
+
+def executar_todos_cenarios(n: int, seed: int, export_format: Optional[str] = None):
     imprimir_cabecalho(f"Executando todos os cenários (N = {n})")
     executar_cenario_a(n, seed)
     executar_cenario_b(n, seed)
     executar_cenario_c(n, seed)
-    executar_benchmark_completo(n, seed)
+    executar_cenario_d(n, seed)
+    executar_benchmark_completo(n, seed, export_format)
 
 
 def imprimir_menu_interativo() -> None:
@@ -393,25 +427,29 @@ def main():
     parser = argparse.ArgumentParser(description="Simulador de Agendamento com Árvores de Intervalos AVL e Rubro-Negra")
     parser.add_argument("-n", type=int, default=5000, help="Quantidade de consultas a processar")
     parser.add_argument("-s", type=int, default=123, help="Seed para geração de números pseudo-aleatórios")
-    parser.add_argument("-c", type=str, default="all", choices=["all", "A", "B", "C", "benchmark", "in"], 
-                        help="Cenário de teste: all (Todos), A (Alta Escrita), B (Alta Leitura), C (Fluxo Misto), benchmark (Comparativo), in (Agendamento manual)")
+    parser.add_argument("-c", type=str, default="all", choices=["all", "A", "B", "C", "D", "benchmark", "in"], 
+                        help="Cenário de teste: all (Todos), A (Alta Escrita), B (Alta Leitura), C (Fluxo Misto), D (Ordenado vs Aleatório), benchmark (Comparativo), in (Agendamento manual)")
     parser.add_argument("--tree", type=str, default="AVL", choices=["AVL", "RB"],
                         help="Tipo de árvore usada no modo interativo: AVL ou RB (Red-Black)")
+    parser.add_argument("--export", type=str, default=None, choices=["csv", "json"],
+                        help="Exporta resultados do benchmark para arquivo")
 
     args = parser.parse_args()
 
     if args.c == "all":
-        executar_todos_cenarios(args.n, args.s)
+        executar_todos_cenarios(args.n, args.s, args.export)
     elif args.c == "A":
         executar_cenario_a(args.n, args.s)
     elif args.c == "B":
         executar_cenario_b(args.n, args.s)
     elif args.c == "C":
         executar_cenario_c(args.n, args.s)
+    elif args.c == "D":
+        executar_cenario_d(args.n, args.s)
     elif args.c == "in":
         executar_interativo(args.n, args.s, args.tree)
     else:
-        executar_benchmark_completo(args.n, args.s)
+        executar_benchmark_completo(args.n, args.s, args.export)
 
 
 if __name__ == "__main__":
