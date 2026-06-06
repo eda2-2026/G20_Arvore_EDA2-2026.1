@@ -275,3 +275,104 @@ class AVL:
             self._em_ordem_recursivo(nodo.esquerda, resultado)
             resultado.append(nodo.consulta)
             self._em_ordem_recursivo(nodo.direita, resultado)
+
+    def buscar_todos_conflitos(self, intervalo: Intervalo) -> List[Consulta]:
+        """Retorna todas as consultas que conflitam com o intervalo dado."""
+        resultado: List[Consulta] = []
+        self._buscar_todos_recursivo(self.raiz, intervalo, resultado)
+        return resultado
+
+    def _buscar_todos_recursivo(self, nodo: Optional[Node], intervalo: Intervalo, resultado: List[Consulta]) -> None:
+        if nodo is None:
+            return
+        
+        # Se max_end do filho esquerdo é maior que o início do intervalo, 
+        # pode haver conflitos na subárvore esquerda
+        if nodo.esquerda is not None and nodo.esquerda.max_end > intervalo.inicio:
+            self._buscar_todos_recursivo(nodo.esquerda, intervalo, resultado)
+            
+        # Verifica nó atual
+        if nodo.intervalo.sobrepoe(intervalo):
+            resultado.append(nodo.consulta)
+            
+        # Verifica subárvore direita: apenas se o início do nó atual for menor que o fim do intervalo buscado,
+        # pois a árvore é ordenada pelo início.
+        if nodo.intervalo.inicio < intervalo.fim:
+            self._buscar_todos_recursivo(nodo.direita, intervalo, resultado)
+
+    def buscar_por_intervalo(self, inicio: int, fim: int) -> List[Consulta]:
+        """Retorna todas as consultas cujo intervalo está inteiramente contido em [inicio, fim)."""
+        resultado: List[Consulta] = []
+        self._buscar_por_intervalo_recursivo(self.raiz, inicio, fim, resultado)
+        return resultado
+
+    def _buscar_por_intervalo_recursivo(self, nodo: Optional[Node], inicio: int, fim: int, resultado: List[Consulta]) -> None:
+        if nodo is None:
+            return
+            
+        # Como os nós são ordenados pelo inicio, se nodo.intervalo.inicio >= inicio,
+        # ainda pode haver nós contidos à esquerda. Se < inicio, tudo à esquerda também será < inicio,
+        # então não pode estar contido.
+        if nodo.intervalo.inicio >= inicio:
+            self._buscar_por_intervalo_recursivo(nodo.esquerda, inicio, fim, resultado)
+            
+        if nodo.intervalo.inicio >= inicio and nodo.intervalo.fim <= fim:
+            resultado.append(nodo.consulta)
+            
+        if nodo.intervalo.inicio < fim:
+            self._buscar_por_intervalo_recursivo(nodo.direita, inicio, fim, resultado)
+
+    def tamanho(self) -> int:
+        """Retorna o número de nós (consultas) na árvore."""
+        return self._tamanho_recursivo(self.raiz)
+
+    def _tamanho_recursivo(self, nodo: Optional[Node]) -> int:
+        if nodo is None:
+            return 0
+        return 1 + self._tamanho_recursivo(nodo.esquerda) + self._tamanho_recursivo(nodo.direita)
+
+    def verificar_integridade(self) -> bool:
+        """Verifica se as propriedades da BST, AVL e max_end são mantidas."""
+        return (self._verificar_bst(self.raiz, float('-inf'), float('inf')) and
+                self._verificar_avl(self.raiz)[0] and
+                self._verificar_max_end(self.raiz))
+
+    def _verificar_bst(self, nodo: Optional[Node], min_val: float, max_val: float) -> bool:
+        if nodo is None:
+            return True
+        chave = nodo.intervalo.inicio
+        # Permite duplicatas à direita (<= e >=)
+        if not (min_val <= chave <= max_val):
+            return False
+        return (self._verificar_bst(nodo.esquerda, min_val, chave) and
+                self._verificar_bst(nodo.direita, chave, max_val))
+
+    def _verificar_avl(self, nodo: Optional[Node]) -> tuple[bool, int]:
+        if nodo is None:
+            return True, 0
+        ok_esq, alt_esq = self._verificar_avl(nodo.esquerda)
+        ok_dir, alt_dir = self._verificar_avl(nodo.direita)
+        
+        if not ok_esq or not ok_dir:
+            return False, 0
+            
+        if abs(alt_esq - alt_dir) > 1:
+            return False, 0
+            
+        if nodo.altura != 1 + max(alt_esq, alt_dir):
+            return False, 0
+            
+        return True, 1 + max(alt_esq, alt_dir)
+
+    def _verificar_max_end(self, nodo: Optional[Node]) -> bool:
+        if nodo is None:
+            return True
+            
+        val_esq = nodo.esquerda.max_end if nodo.esquerda else 0
+        val_dir = nodo.direita.max_end if nodo.direita else 0
+        esperado = max(nodo.intervalo.fim, val_esq, val_dir)
+        
+        if nodo.max_end != esperado:
+            return False
+            
+        return self._verificar_max_end(nodo.esquerda) and self._verificar_max_end(nodo.direita)
