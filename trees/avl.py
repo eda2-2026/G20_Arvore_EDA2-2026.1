@@ -260,6 +260,77 @@ class AVL:
             atual = atual.esquerda
         return atual
 
+    def buscar_todos_conflitos(self, intervalo: Intervalo) -> List[Consulta]:
+        conflitos = []
+        self._buscar_todos_conflitos_recursivo(self.raiz, intervalo, conflitos)
+        return conflitos
+
+    def _buscar_todos_conflitos_recursivo(self, nodo: Optional[Node], intervalo: Intervalo, conflitos: List[Consulta]) -> None:
+        if nodo is None:
+            return
+
+        if nodo.intervalo.sobrepoe(intervalo):
+            conflitos.append(nodo.consulta)
+
+        if nodo.esquerda is not None and nodo.esquerda.max_end > intervalo.inicio:
+            self._buscar_todos_conflitos_recursivo(nodo.esquerda, intervalo, conflitos)
+
+        if nodo.intervalo.inicio < intervalo.fim:
+            self._buscar_todos_conflitos_recursivo(nodo.direita, intervalo, conflitos)
+
+    def buscar_por_intervalo(self, inicio: int, fim: int) -> List[Consulta]:
+        contidos = []
+        self._buscar_por_intervalo_recursivo(self.raiz, inicio, fim, contidos)
+        return contidos
+
+    def _buscar_por_intervalo_recursivo(self, nodo: Optional[Node], inicio: int, fim: int, contidos: List[Consulta]) -> None:
+        if nodo is None:
+            return
+
+        if nodo.intervalo.inicio >= inicio and nodo.intervalo.fim <= fim:
+            contidos.append(nodo.consulta)
+
+        if nodo.esquerda is not None and nodo.esquerda.max_end >= inicio:
+            self._buscar_por_intervalo_recursivo(nodo.esquerda, inicio, fim, contidos)
+
+        if nodo.intervalo.inicio <= fim:
+            self._buscar_por_intervalo_recursivo(nodo.direita, inicio, fim, contidos)
+
+    def tamanho(self) -> int:
+        return self._tamanho_recursivo(self.raiz)
+        
+    def _tamanho_recursivo(self, nodo: Optional[Node]) -> int:
+        if nodo is None:
+            return 0
+        return 1 + self._tamanho_recursivo(nodo.esquerda) + self._tamanho_recursivo(nodo.direita)
+
+    def verificar_integridade(self) -> bool:
+        if self.raiz is None:
+            return True
+        return self._verificar_integridade_recursivo(self.raiz)
+
+    def _verificar_integridade_recursivo(self, nodo: Optional[Node]) -> bool:
+        if nodo is None:
+            return True
+
+        fb = self.obter_fator_balanceamento(nodo)
+        if abs(fb) > 1:
+            return False
+
+        val_esq = nodo.esquerda.max_end if nodo.esquerda else 0
+        val_dir = nodo.direita.max_end if nodo.direita else 0
+        esperado_max_end = max(nodo.intervalo.fim, val_esq, val_dir)
+        if nodo.max_end != esperado_max_end:
+            return False
+
+        if nodo.esquerda is not None and nodo.esquerda.intervalo.inicio > nodo.intervalo.inicio:
+            return False
+        if nodo.direita is not None and nodo.direita.intervalo.inicio < nodo.intervalo.inicio:
+            return False
+
+        return self._verificar_integridade_recursivo(nodo.esquerda) and self._verificar_integridade_recursivo(nodo.direita)
+
+
     def altura(self) -> int:
         if self.raiz is None:
             return -1

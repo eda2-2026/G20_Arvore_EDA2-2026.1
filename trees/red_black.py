@@ -1,6 +1,6 @@
 from typing import Optional, List
 from models import Intervalo, Consulta
-from .trees.node import Node
+from .node import Node
 
 class RedBlackTree:
     def __init__(self):
@@ -302,7 +302,7 @@ class RedBlackTree:
 
     def _min_valor_nodo(self, nodo: Node) -> Node:
         atual = nodo
-        while atual.esquerda != self.NIL and atual.esquerda is not None:
+        while atual.esquerda != self.NIL:
             atual = atual.esquerda
         return atual
 
