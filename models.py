@@ -1,4 +1,20 @@
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+
+BASE_DATE = date(2026, 1, 1)
+
+
+def dias_para_data(dias: int) -> date:
+    return BASE_DATE + timedelta(days=dias)
+
+
+def format_ponto(ponto: int | date | datetime) -> str:
+    if isinstance(ponto, int):
+        return dias_para_data(ponto).isoformat()
+    if isinstance(ponto, datetime):
+        return ponto.date().isoformat()
+    return ponto.isoformat()
+
 
 @dataclass
 class Intervalo:
@@ -14,7 +30,7 @@ class Intervalo:
         return self.inicio < outro.fim and outro.inicio < self.fim
 
     def __repr__(self) -> str:
-        return f"[{self.inicio}, {self.fim})"
+        return f"[{format_ponto(self.inicio)}, {format_ponto(self.fim)})"
 
 @dataclass
 class Consulta:

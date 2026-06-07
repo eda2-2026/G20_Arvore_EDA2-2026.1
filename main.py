@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
@@ -16,7 +17,47 @@ def imprimir_cabecalho(titulo: str):
     print()
 
 
+BASE_DATE = date(2026, 1, 1)
+DATE_FORMAT = "%Y-%m-%d"
+
+
+def dias_para_data(dias: int) -> date:
+    return BASE_DATE + timedelta(days=dias)
+
+
+def data_para_dias(data: date) -> int:
+    return (data - BASE_DATE).days
+
+
+def format_data(valor: int | date | datetime) -> str:
+    if isinstance(valor, int):
+        return dias_para_data(valor).isoformat()
+    if isinstance(valor, datetime):
+        return valor.date().isoformat()
+    return valor.isoformat()
+
+
+def format_intervalo(intervalo: Intervalo) -> str:
+    return f"{format_data(intervalo.inicio)} até {format_data(intervalo.fim)}"
+
+
+def parse_data_input(prompt: str) -> int:
+    while True:
+        texto = input(prompt).strip()
+        if not texto:
+            print("Entrada vazia. Informe a data no formato AAAA-MM-DD ou um número de dias.")
+            continue
+        try:
+            if "-" in texto:
+                data = datetime.strptime(texto, DATE_FORMAT).date()
+                return data_para_dias(data)
+            return int(texto)
+        except ValueError:
+            print("Formato inválido. Use AAAA-MM-DD ou um número inteiro de dias a partir de 2026-01-01.")
+
+
 def gerar_consultas(tamanho: int, ordenado: bool = False, seed: int = None) -> List[Consulta]:
+
     """Gera consultas de agendamento com intervalos de tempo."""
     if seed is not None:
         random.seed(seed)
@@ -41,10 +82,11 @@ def gerar_consultas(tamanho: int, ordenado: bool = False, seed: int = None) -> L
     return consultas
 
 
-AGENDA_FILE = Path(__file__).resolve().parent / "agenda.json"
+AGENDA_FILE = Path(__file__).resolve().parent / "agendas.json"
 
 
 def consulta_para_dict(consulta: Consulta) -> Dict[str, Any]:
+
     return {
         "id_consulta": consulta.id_consulta,
         "cidadao": consulta.cidadao,
@@ -72,7 +114,12 @@ def salvar_agenda(consultas: List[Consulta], caminho: Path = AGENDA_FILE) -> Non
 
 def carregar_agenda(caminho: Path = AGENDA_FILE) -> List[Consulta]:
     if not caminho.exists():
-        return []
+        arquivo_antigo = caminho.parent / "agenda.json"
+        if arquivo_antigo.exists():
+            caminho = arquivo_antigo
+        else:
+            return []
+
     with caminho.open("r", encoding="utf-8") as arquivo:
         dados = json.load(arquivo)
 
@@ -131,6 +178,8 @@ def rodar_benchmark_arvore(
         "tempo_busca": tempo_busca,
         "tempo_remocao": tempo_remocao,
         "altura": altura_final,
+        "rotacoes": arvore.rotacoes,
+        "tamanho": arvore.tamanho(),
     }
 
 
@@ -146,6 +195,7 @@ def executar_cenario_a(n: int, seed: int):
     random.shuffle(intervalos_teste)
 
     print("Resumo do cenário:")
+    print("  - Simula adição de datas com verificação de disponibilidade e detecção de conflitos.")
     print(f"  - Consultas geradas: {len(consultas)}")
     print(f"  - Intervalos de teste: {len(intervalos_teste)} ({len(intervalos_existentes)} existentes + {len(intervalos_livres)} livres)")
 
@@ -172,7 +222,7 @@ def executar_cenario_a(n: int, seed: int):
         for intervalo in intervalos_teste:
             conflito = arvore.buscar_conflito(intervalo)
             status = "Disponível" if conflito is None else f"Conflito com {conflito}"
-            print(f"  - {intervalo}: {status}")
+            print(f"  - {format_intervalo(intervalo)}: {status}")
 
 
 def executar_cenario_b(n: int, seed: int):
@@ -191,8 +241,9 @@ def executar_cenario_b(n: int, seed: int):
     arvores = {"AVL": AVL, "Red-Black": RedBlackTree}
 
     print("Resumo do cenário:")
+    print("  - Simula alta leitura de disponibilidade para datas agendadas após inserção.")
     print(f"  - Consultas geradas: {len(consultas)}")
-    print(f"  - Intervalos de busca: {len(intervalos_busca)}")
+    print(f"  - Intervalos de verificação de disponibilidade: {len(intervalos_busca)}")
     print("\nResultado do benchmark de leitura:")
     print("| Árvore      | Altura | Tamanho | Inserção (ms) | Busca (200) (ms) | Rotações |")
     print("|-------------|--------|---------|---------------|------------------|----------|")
@@ -212,6 +263,7 @@ def executar_cenario_c(n: int, seed: int):
     arvores = {"AVL": AVL, "Red-Black": RedBlackTree}
 
     print("Resumo do cenário:")
+    print("  - Simula fluxo misto de agendamentos com inserções, buscas e remoções de datas.")
     print(f"  - Consultas geradas: {len(consultas)}")
     print(f"  - Consultas removidas: {len(consultas_remocao)}")
     print("\nResultado do benchmark misto:")
@@ -282,6 +334,10 @@ def executar_cenario_d(n: int, seed: int):
     consultas_aleatorias = gerar_consultas(n, ordenado=False, seed=seed)
     arvores = {"AVL": AVL, "Red-Black": RedBlackTree}
     
+    print("Resumo do cenário:")
+    print("  - Compara o impacto da ordem de inserção de datas na altura e rotações da árvore.")
+    print(f"  - Consultas ordenadas: {len(consultas_ordenadas)}")
+    print(f"  - Consultas aleatórias: {len(consultas_aleatorias)}")
     print("\nTabela comparativa (Inserção):")
     print("| Árvore      | Ordem     | Altura | Tamanho | Inserção (ms) | Rotações |")
     print("|-------------|-----------|--------|---------|---------------|----------|")
@@ -306,9 +362,9 @@ def executar_todos_cenarios(n: int, seed: int, export_format: Optional[str] = No
 def imprimir_menu_interativo() -> None:
     print("\nModo Interativo de Agendamento")
     print("1 - Mostrar agendamentos")
-    print("2 - Adicionar consulta")
-    print("3 - Remover consulta")
-    print("4 - Buscar conflito de intervalo")
+    print("2 - Agendar data")
+    print("3 - Remover data")
+    print("4 - Verificar disponibilidade de data")
     print("5 - Trocar tipo de árvore")
     print("6 - Salvar agenda")
     print("0 - Sair")
@@ -317,17 +373,17 @@ def imprimir_menu_interativo() -> None:
 def imprimir_agendamentos(arvore) -> None:
     consultas = arvore.em_ordem()
     if not consultas:
-        print("Nenhuma consulta agendada.")
+        print("Nenhum agendamento registrado.")
         return
 
     print("\nAgendamentos atuais:")
     for consulta in consultas:
-        print(f"  - ID {consulta.id_consulta}: {consulta.cidadao} | {consulta.intervalo}")
+        print(f"  - ID {consulta.id_consulta}: {consulta.cidadao} | {format_intervalo(consulta.intervalo)}")
 
 
 def solicitar_intervalo() -> Intervalo:
-    inicio = solicitar_inteiro("Informe o início do intervalo: ")
-    fim = solicitar_inteiro("Informe o fim do intervalo: ")
+    inicio = parse_data_input("Informe o início do intervalo (AAAA-MM-DD): ")
+    fim = parse_data_input("Informe o fim do intervalo (AAAA-MM-DD): ")
     return Intervalo(inicio=inicio, fim=fim)
 
 
@@ -374,28 +430,28 @@ def executar_interativo(n: int, seed: int, tree_choice: Optional[str] = None):
                 if arvore.inserir(consulta):
                     consultas.append(consulta)
                     salvar_agenda(consultas)
-                    print(f"Consulta adicionada com sucesso: {consulta}")
+                    print(f"Agendamento adicionado com sucesso: ID {consulta.id_consulta} | {consulta.cidadao} | {format_intervalo(consulta.intervalo)}")
                 else:
-                    print(f"Falha: conflito encontrado para o intervalo {intervalo}.")
+                    print(f"Falha: conflito encontrado para o intervalo {format_intervalo(intervalo)}.")
             except ValueError as err:
                 print(f"Entrada inválida: {err}")
         elif escolha == "3":
             try:
                 id_consulta = solicitar_inteiro("Informe o ID da consulta a remover: ")
-                inicio = solicitar_inteiro("Informe o início do intervalo da consulta a remover: ")
+                inicio = parse_data_input("Informe o início do intervalo da consulta a remover (AAAA-MM-DD): ")
                 consulta_remover = next(
                     (c for c in consultas if c.id_consulta == id_consulta and c.intervalo.inicio == inicio),
                     None,
                 )
                 if consulta_remover is None:
-                    print("Não foi possível encontrar a consulta para remoção.")
+                    print("Não foi possível encontrar o agendamento para remoção.")
                     continue
                 if arvore.remover(consulta_remover):
                     consultas.remove(consulta_remover)
                     salvar_agenda(consultas)
-                    print(f"Consulta removida: {consulta_remover}")
+                    print(f"Agendamento removido: ID {consulta_remover.id_consulta} | {consulta_remover.cidadao} | {format_intervalo(consulta_remover.intervalo)}")
                 else:
-                    print(f"Não foi possível remover. Verifique se o ID e o início estão corretos.")
+                    print(f"Não foi possível remover. Verifique se o ID e o intervalo estão corretos.")
             except ValueError as err:
                 print(f"Entrada inválida: {err}")
         elif escolha == "4":
@@ -403,9 +459,9 @@ def executar_interativo(n: int, seed: int, tree_choice: Optional[str] = None):
                 intervalo = solicitar_intervalo()
                 conflito = arvore.buscar_conflito(intervalo)
                 if conflito is None:
-                    print(f"Intervalo {intervalo} está disponível.")
+                    print(f"O intervalo {format_intervalo(intervalo)} está disponível.")
                 else:
-                    print(f"Intervalo {intervalo} conflita com {conflito}")
+                    print(f"O intervalo {format_intervalo(intervalo)} conflita com {conflito}")
             except ValueError as err:
                 print(f"Entrada inválida: {err}")
         elif escolha == "5":
