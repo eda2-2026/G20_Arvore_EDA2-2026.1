@@ -1,5 +1,8 @@
+import csv
+import json
 import random
 import time
+from pathlib import Path
 from typing import List, Dict, Any, Type
 
 from models import Consulta, Intervalo
