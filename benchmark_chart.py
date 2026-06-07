@@ -98,8 +98,8 @@ def gerar_graficos(resultados: List[Dict[str, Any]]):
         nome_arquivo = f"benchmark_arvores_{cenario.lower()}.png"
         caminho_grafico = os.path.join("graficos", nome_arquivo)
         plt.savefig(caminho_grafico, dpi=300)
-        plt.close()
         print(f"Gráfico salvo com sucesso em: {caminho_grafico}")
+        plt.show()
 
 if __name__ == "__main__":
     executar_e_salvar_benchmarks(salvar_graficos=True, salvar_csv=True)
