@@ -17,11 +17,12 @@ class AVL:
             return 0
         return self.obter_altura(nodo.esquerda) - self.obter_altura(nodo.direita)
 
-    def atualizar_max_end(self, nodo: Node) -> None:
+    def atualizar_max_end(self, nodo: Optional[Node]) -> None:
         if nodo is None:
             return
         val_esq = nodo.esquerda.max_end if nodo.esquerda else 0
         val_dir = nodo.direita.max_end if nodo.direita else 0
+        assert nodo.intervalo is not None
         nodo.max_end = max(nodo.intervalo.fim, val_esq, val_dir)
 
     def rotacionar_direita(self, y: Node) -> Node:
@@ -99,6 +100,7 @@ class AVL:
             return None
 
         # 1. Se o intervalo do nó atual conflita, retorna a consulta
+        assert nodo.intervalo is not None
         if nodo.intervalo.sobrepoe(intervalo):
             return nodo.consulta
 
@@ -127,6 +129,7 @@ class AVL:
             return Node(consulta)
 
         # Ordena pela chave primária: início do intervalo
+        assert nodo.intervalo is not None
         if consulta.intervalo.inicio < nodo.intervalo.inicio:
             nodo.esquerda = self._inserir_recursivo(nodo.esquerda, consulta)
             nodo.esquerda.pai = nodo
@@ -142,22 +145,34 @@ class AVL:
         fb = self.obter_fator_balanceamento(nodo)
 
         # Caso 1: Esquerda-Esquerda
-        if fb > 1 and consulta.intervalo.inicio < nodo.esquerda.intervalo.inicio:
-            return self.rotacionar_direita(nodo)
+        if fb > 1:
+            assert nodo.esquerda is not None
+            assert nodo.esquerda.intervalo is not None
+            if consulta.intervalo.inicio < nodo.esquerda.intervalo.inicio:
+                return self.rotacionar_direita(nodo)
 
         # Caso 2: Direita-Direita
-        if fb < -1 and consulta.intervalo.inicio >= nodo.direita.intervalo.inicio:
-            return self.rotacionar_esquerda(nodo)
+        if fb < -1:
+            assert nodo.direita is not None
+            assert nodo.direita.intervalo is not None
+            if consulta.intervalo.inicio >= nodo.direita.intervalo.inicio:
+                return self.rotacionar_esquerda(nodo)
 
         # Caso 3: Esquerda-Direita
-        if fb > 1 and consulta.intervalo.inicio >= nodo.esquerda.intervalo.inicio:
-            nodo.esquerda = self.rotacionar_esquerda(nodo.esquerda)
-            return self.rotacionar_direita(nodo)
+        if fb > 1:
+            assert nodo.esquerda is not None
+            assert nodo.esquerda.intervalo is not None
+            if consulta.intervalo.inicio >= nodo.esquerda.intervalo.inicio:
+                nodo.esquerda = self.rotacionar_esquerda(nodo.esquerda)
+                return self.rotacionar_direita(nodo)
 
         # Caso 4: Direita-Esquerda
-        if fb < -1 and consulta.intervalo.inicio < nodo.direita.intervalo.inicio:
-            nodo.direita = self.rotacionar_direita(nodo.direita)
-            return self.rotacionar_esquerda(nodo)
+        if fb < -1:
+            assert nodo.direita is not None
+            assert nodo.direita.intervalo is not None
+            if consulta.intervalo.inicio < nodo.direita.intervalo.inicio:
+                nodo.direita = self.rotacionar_direita(nodo.direita)
+                return self.rotacionar_esquerda(nodo)
 
         return nodo
 
@@ -175,6 +190,8 @@ class AVL:
     def _buscar_por_id(self, nodo: Optional[Node], inicio: int, id_consulta: int) -> Optional[Node]:
         if nodo is None:
             return None
+        assert nodo.intervalo is not None
+        assert nodo.consulta is not None
         if nodo.intervalo.inicio == inicio and nodo.consulta.id_consulta == id_consulta:
             return nodo
         
@@ -192,6 +209,7 @@ class AVL:
     def _remover_recursivo(self, nodo: Optional[Node], inicio: int, id_consulta: int) -> Optional[Node]:
         if nodo is None:
             return None
+        assert nodo.intervalo is not None
 
         if inicio < nodo.intervalo.inicio:
             nodo.esquerda = self._remover_recursivo(nodo.esquerda, inicio, id_consulta)
@@ -203,13 +221,17 @@ class AVL:
                 nodo.direita.pai = nodo
         else:
             # Encontrou nó com início igual
+            assert nodo.consulta is not None
             if nodo.consulta.id_consulta == id_consulta:
                 if nodo.esquerda is None:
                     return nodo.direita
                 elif nodo.direita is None:
                     return nodo.esquerda
 
+                assert nodo.direita is not None
                 sucessor = self._min_valor_nodo(nodo.direita)
+                assert sucessor.consulta is not None
+                assert sucessor.intervalo is not None
                 nodo.consulta = sucessor.consulta
                 nodo.intervalo = sucessor.intervalo
                 nodo.direita = self._remover_recursivo(nodo.direita, sucessor.intervalo.inicio, sucessor.consulta.id_consulta)
@@ -235,22 +257,30 @@ class AVL:
         fb = self.obter_fator_balanceamento(nodo)
 
         # Caso 1: Esquerda-Esquerda
-        if fb > 1 and self.obter_fator_balanceamento(nodo.esquerda) >= 0:
-            return self.rotacionar_direita(nodo)
+        if fb > 1:
+            assert nodo.esquerda is not None
+            if self.obter_fator_balanceamento(nodo.esquerda) >= 0:
+                return self.rotacionar_direita(nodo)
 
         # Caso 2: Esquerda-Direita
-        if fb > 1 and self.obter_fator_balanceamento(nodo.esquerda) < 0:
-            nodo.esquerda = self.rotacionar_esquerda(nodo.esquerda)
-            return self.rotacionar_direita(nodo)
+        if fb > 1:
+            assert nodo.esquerda is not None
+            if self.obter_fator_balanceamento(nodo.esquerda) < 0:
+                nodo.esquerda = self.rotacionar_esquerda(nodo.esquerda)
+                return self.rotacionar_direita(nodo)
 
         # Caso 3: Direita-Direita
-        if fb < -1 and self.obter_fator_balanceamento(nodo.direita) <= 0:
-            return self.rotacionar_esquerda(nodo)
+        if fb < -1:
+            assert nodo.direita is not None
+            if self.obter_fator_balanceamento(nodo.direita) <= 0:
+                return self.rotacionar_esquerda(nodo)
 
         # Caso 4: Direita-Esquerda
-        if fb < -1 and self.obter_fator_balanceamento(nodo.direita) > 0:
-            nodo.direita = self.rotacionar_direita(nodo.direita)
-            return self.rotacionar_esquerda(nodo)
+        if fb < -1:
+            assert nodo.direita is not None
+            if self.obter_fator_balanceamento(nodo.direita) > 0:
+                nodo.direita = self.rotacionar_direita(nodo.direita)
+                return self.rotacionar_esquerda(nodo)
 
         return nodo
 
@@ -259,77 +289,6 @@ class AVL:
         while atual.esquerda is not None:
             atual = atual.esquerda
         return atual
-
-    def buscar_todos_conflitos(self, intervalo: Intervalo) -> List[Consulta]:
-        conflitos = []
-        self._buscar_todos_conflitos_recursivo(self.raiz, intervalo, conflitos)
-        return conflitos
-
-    def _buscar_todos_conflitos_recursivo(self, nodo: Optional[Node], intervalo: Intervalo, conflitos: List[Consulta]) -> None:
-        if nodo is None:
-            return
-
-        if nodo.intervalo.sobrepoe(intervalo):
-            conflitos.append(nodo.consulta)
-
-        if nodo.esquerda is not None and nodo.esquerda.max_end > intervalo.inicio:
-            self._buscar_todos_conflitos_recursivo(nodo.esquerda, intervalo, conflitos)
-
-        if nodo.intervalo.inicio < intervalo.fim:
-            self._buscar_todos_conflitos_recursivo(nodo.direita, intervalo, conflitos)
-
-    def buscar_por_intervalo(self, inicio: int, fim: int) -> List[Consulta]:
-        contidos = []
-        self._buscar_por_intervalo_recursivo(self.raiz, inicio, fim, contidos)
-        return contidos
-
-    def _buscar_por_intervalo_recursivo(self, nodo: Optional[Node], inicio: int, fim: int, contidos: List[Consulta]) -> None:
-        if nodo is None:
-            return
-
-        if nodo.intervalo.inicio >= inicio and nodo.intervalo.fim <= fim:
-            contidos.append(nodo.consulta)
-
-        if nodo.esquerda is not None and nodo.esquerda.max_end >= inicio:
-            self._buscar_por_intervalo_recursivo(nodo.esquerda, inicio, fim, contidos)
-
-        if nodo.intervalo.inicio <= fim:
-            self._buscar_por_intervalo_recursivo(nodo.direita, inicio, fim, contidos)
-
-    def tamanho(self) -> int:
-        return self._tamanho_recursivo(self.raiz)
-        
-    def _tamanho_recursivo(self, nodo: Optional[Node]) -> int:
-        if nodo is None:
-            return 0
-        return 1 + self._tamanho_recursivo(nodo.esquerda) + self._tamanho_recursivo(nodo.direita)
-
-    def verificar_integridade(self) -> bool:
-        if self.raiz is None:
-            return True
-        return self._verificar_integridade_recursivo(self.raiz)
-
-    def _verificar_integridade_recursivo(self, nodo: Optional[Node]) -> bool:
-        if nodo is None:
-            return True
-
-        fb = self.obter_fator_balanceamento(nodo)
-        if abs(fb) > 1:
-            return False
-
-        val_esq = nodo.esquerda.max_end if nodo.esquerda else 0
-        val_dir = nodo.direita.max_end if nodo.direita else 0
-        esperado_max_end = max(nodo.intervalo.fim, val_esq, val_dir)
-        if nodo.max_end != esperado_max_end:
-            return False
-
-        if nodo.esquerda is not None and nodo.esquerda.intervalo.inicio > nodo.intervalo.inicio:
-            return False
-        if nodo.direita is not None and nodo.direita.intervalo.inicio < nodo.intervalo.inicio:
-            return False
-
-        return self._verificar_integridade_recursivo(nodo.esquerda) and self._verificar_integridade_recursivo(nodo.direita)
-
 
     def altura(self) -> int:
         if self.raiz is None:
@@ -344,6 +303,7 @@ class AVL:
     def _em_ordem_recursivo(self, nodo: Optional[Node], resultado: List[Consulta]) -> None:
         if nodo is not None:
             self._em_ordem_recursivo(nodo.esquerda, resultado)
+            assert nodo.consulta is not None
             resultado.append(nodo.consulta)
             self._em_ordem_recursivo(nodo.direita, resultado)
 
@@ -363,6 +323,8 @@ class AVL:
             self._buscar_todos_recursivo(nodo.esquerda, intervalo, resultado)
             
         # Verifica nó atual
+        assert nodo.intervalo is not None
+        assert nodo.consulta is not None
         if nodo.intervalo.sobrepoe(intervalo):
             resultado.append(nodo.consulta)
             
@@ -384,6 +346,8 @@ class AVL:
         # Como os nós são ordenados pelo inicio, se nodo.intervalo.inicio >= inicio,
         # ainda pode haver nós contidos à esquerda. Se < inicio, tudo à esquerda também será < inicio,
         # então não pode estar contido.
+        assert nodo.intervalo is not None
+        assert nodo.consulta is not None
         if nodo.intervalo.inicio >= inicio:
             self._buscar_por_intervalo_recursivo(nodo.esquerda, inicio, fim, resultado)
             
@@ -411,12 +375,13 @@ class AVL:
     def _verificar_bst(self, nodo: Optional[Node], min_val: float, max_val: float) -> bool:
         if nodo is None:
             return True
+        assert nodo.intervalo is not None
         chave = nodo.intervalo.inicio
         # Permite duplicatas à direita (<= e >=)
         if not (min_val <= chave <= max_val):
             return False
         return (self._verificar_bst(nodo.esquerda, min_val, chave) and
-                self._verificar_bst(nodo.direita, chave, max_val))
+                 self._verificar_bst(nodo.direita, chave, max_val))
 
     def _verificar_avl(self, nodo: Optional[Node]) -> tuple[bool, int]:
         if nodo is None:
@@ -438,7 +403,7 @@ class AVL:
     def _verificar_max_end(self, nodo: Optional[Node]) -> bool:
         if nodo is None:
             return True
-            
+        assert nodo.intervalo is not None
         val_esq = nodo.esquerda.max_end if nodo.esquerda else 0
         val_dir = nodo.direita.max_end if nodo.direita else 0
         esperado = max(nodo.intervalo.fim, val_esq, val_dir)

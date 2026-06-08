@@ -17,8 +17,9 @@ class RedBlackTree:
     def atualizar_max_end(self, nodo: Node) -> None:
         if nodo is None or nodo == self.NIL:
             return
-        val_esq = nodo.esquerda.max_end if nodo.esquerda != self.NIL else 0
-        val_dir = nodo.direita.max_end if nodo.direita != self.NIL else 0
+        val_esq = nodo.esquerda.max_end if (nodo.esquerda is not None and nodo.esquerda != self.NIL) else 0
+        val_dir = nodo.direita.max_end if (nodo.direita is not None and nodo.direita != self.NIL) else 0
+        assert nodo.intervalo is not None
         nodo.max_end = max(nodo.intervalo.fim, val_esq, val_dir)
 
     def atualizar_caminho_ate_raiz(self, nodo: Node) -> None:
@@ -32,13 +33,13 @@ class RedBlackTree:
         assert y is not None and y != self.NIL
         
         x.direita = y.esquerda
-        if y.esquerda != self.NIL:
+        if y.esquerda is not None and y.esquerda != self.NIL:
             y.esquerda.pai = x
             
         y.pai = x.pai
-        if x.pai == self.NIL:
+        if x.pai == self.NIL or x.pai is None:
             self.raiz = y
-        elif x == x.pai.esquerda:
+        elif x.pai.esquerda == x:
             x.pai.esquerda = y
         else:
             x.pai.direita = y
@@ -56,13 +57,13 @@ class RedBlackTree:
         assert x is not None and x != self.NIL
         
         y.esquerda = x.direita
-        if x.direita != self.NIL:
+        if x.direita is not None and x.direita != self.NIL:
             x.direita.pai = y
             
         x.pai = y.pai
-        if y.pai == self.NIL:
+        if y.pai == self.NIL or y.pai is None:
             self.raiz = x
-        elif y == y.pai.esquerda:
+        elif y.pai.esquerda == y:
             y.pai.esquerda = x
         else:
             y.pai.direita = x
@@ -79,16 +80,17 @@ class RedBlackTree:
         """Busca se há conflitos com o intervalo fornecido."""
         return self._buscar_conflito_recursivo(self.raiz, intervalo)
 
-    def _buscar_conflito_recursivo(self, nodo: Node, intervalo: Intervalo) -> Optional[Consulta]:
+    def _buscar_conflito_recursivo(self, nodo: Optional[Node], intervalo: Intervalo) -> Optional[Consulta]:
         if nodo == self.NIL or nodo is None:
             return None
 
+        assert nodo.intervalo is not None
         # 1. Verifica se o nó atual se sobrepõe
         if nodo.intervalo.sobrepoe(intervalo):
             return nodo.consulta
 
         # 2. Se o filho esquerdo existe e seu max_end > inicio do intervalo, entra na esquerda
-        if nodo.esquerda != self.NIL and nodo.esquerda.max_end > intervalo.inicio:
+        if nodo.esquerda != self.NIL and nodo.esquerda is not None and nodo.esquerda.max_end > intervalo.inicio:
             conflito_esq = self._buscar_conflito_recursivo(nodo.esquerda, intervalo)
             if conflito_esq is not None:
                 return conflito_esq
@@ -109,8 +111,10 @@ class RedBlackTree:
 
         y = self.NIL
         x = self.raiz
-        while x != self.NIL:
+        assert nodo.intervalo is not None
+        while x != self.NIL and x is not None:
             y = x
+            assert x.intervalo is not None
             if nodo.intervalo.inicio < x.intervalo.inicio:
                 x = x.esquerda
             else:
@@ -119,15 +123,17 @@ class RedBlackTree:
         nodo.pai = y
         if y == self.NIL:
             self.raiz = nodo
-        elif nodo.intervalo.inicio < y.intervalo.inicio:
-            y.esquerda = nodo
         else:
-            y.direita = nodo
+            assert y.intervalo is not None
+            if nodo.intervalo.inicio < y.intervalo.inicio:
+                y.esquerda = nodo
+            else:
+                y.direita = nodo
 
         # Caminha de volta à raiz atualizando max_end antes do balanceamento
         self.atualizar_caminho_ate_raiz(nodo)
 
-        if nodo.pai == self.NIL:
+        if nodo.pai == self.NIL or nodo.pai is None:
             nodo.color = False  # Raiz é preta
             return True
 
@@ -138,9 +144,11 @@ class RedBlackTree:
         return True
 
     def _inserir_fixup(self, z: Node) -> None:
-        while z.pai.color is True:  # Enquanto o pai for vermelho
+        while z.pai is not None and z.pai.color is True:  # Enquanto o pai for vermelho
+            assert z.pai.pai is not None
             if z.pai == z.pai.pai.esquerda:
                 y = z.pai.pai.direita  # tio de z
+                assert y is not None
                 if y.color is True:  # Caso 1: Tio é vermelho
                     z.pai.color = False
                     y.color = False
@@ -154,11 +162,14 @@ class RedBlackTree:
                         z = z.pai
                         self.rotacionar_esquerda(z)
                     # Caso 3
+                    assert z.pai is not None
                     z.pai.color = False
+                    assert z.pai.pai is not None
                     z.pai.pai.color = True
                     self.rotacionar_direita(z.pai.pai)
             else:
                 y = z.pai.pai.esquerda  # tio de z
+                assert y is not None
                 if y.color is True:  # Caso 1
                     z.pai.color = False
                     y.color = False
@@ -172,7 +183,9 @@ class RedBlackTree:
                         z = z.pai
                         self.rotacionar_direita(z)
                     # Caso 3
+                    assert z.pai is not None
                     z.pai.color = False
+                    assert z.pai.pai is not None
                     z.pai.pai.color = True
                     self.rotacionar_esquerda(z.pai.pai)
             if z == self.raiz:
@@ -180,7 +193,7 @@ class RedBlackTree:
         self.raiz.color = False  # Raiz permanece preta
 
     def transplante(self, u: Node, v: Node) -> None:
-        if u.pai == self.NIL:
+        if u.pai == self.NIL or u.pai is None:
             self.raiz = v
         elif u == u.pai.esquerda:
             u.pai.esquerda = v
@@ -196,37 +209,46 @@ class RedBlackTree:
 
         y = z
         y_cor_original = y.color
-        if z.esquerda == self.NIL:
+        if z.esquerda == self.NIL or z.esquerda is None:
             x = z.direita
-            self.transplante(z, z.direita)
+            assert x is not None
+            self.transplante(z, x)
             start_update = x if x != self.NIL else z.pai
-        elif z.direita == self.NIL:
+        elif z.direita == self.NIL or z.direita is None:
             x = z.esquerda
-            self.transplante(z, z.esquerda)
+            assert x is not None
+            self.transplante(z, x)
             start_update = x if x != self.NIL else z.pai
         else:
+            assert z.direita is not None
             y = self._min_valor_nodo(z.direita)
             y_cor_original = y.color
             x = y.direita
+            assert x is not None
             if y.pai == z:
                 x.pai = y
                 start_update = y
             else:
                 old_y_pai = y.pai
-                self.transplante(y, y.direita)
+                assert old_y_pai is not None
+                self.transplante(y, x)
                 self.atualizar_caminho_ate_raiz(old_y_pai)
                 y.direita = z.direita
-                y.direita.pai = y
+                if y.direita is not None:
+                    y.direita.pai = y
                 start_update = y
 
             self.transplante(z, y)
             y.esquerda = z.esquerda
-            y.esquerda.pai = y
+            if y.esquerda is not None:
+                y.esquerda.pai = y
             y.color = z.color
 
+        assert start_update is not None
         self.atualizar_caminho_ate_raiz(start_update)
 
         if y_cor_original is False:
+            assert x is not None
             self._remover_fixup(x)
 
         return True
@@ -234,10 +256,12 @@ class RedBlackTree:
     def _buscar_nodo_especifico(self, inicio: int, id_consulta: int) -> Node:
         return self._buscar_nodo_especifico_recursivo(self.raiz, inicio, id_consulta)
 
-    def _buscar_nodo_especifico_recursivo(self, nodo: Node, inicio: int, id_consulta: int) -> Node:
+    def _buscar_nodo_especifico_recursivo(self, nodo: Optional[Node], inicio: int, id_consulta: int) -> Node:
         if nodo == self.NIL or nodo is None:
             return self.NIL
 
+        assert nodo.intervalo is not None
+        assert nodo.consulta is not None
         if nodo.intervalo.inicio == inicio and nodo.consulta.id_consulta == id_consulta:
             return nodo
 
@@ -250,14 +274,19 @@ class RedBlackTree:
 
     def _remover_fixup(self, x: Node) -> None:
         while x != self.raiz and x.color is False:
+            assert x.pai is not None
             if x == x.pai.esquerda:
                 w = x.pai.direita  # irmão de x
+                assert w is not None
                 if w.color is True:  # Caso 1
                     w.color = False
                     x.pai.color = True
                     self.rotacionar_esquerda(x.pai)
                     w = x.pai.direita
+                    assert w is not None
                 # Caso 2
+                assert w.esquerda is not None
+                assert w.direita is not None
                 if w.esquerda.color is False and w.direita.color is False:
                     w.color = True
                     x = x.pai
@@ -268,20 +297,26 @@ class RedBlackTree:
                         w.color = True
                         self.rotacionar_direita(w)
                         w = x.pai.direita
+                        assert w is not None
                     # Caso 4
                     w.color = x.pai.color
                     x.pai.color = False
+                    assert w.direita is not None
                     w.direita.color = False
                     self.rotacionar_esquerda(x.pai)
                     x = self.raiz
             else:
                 w = x.pai.esquerda  # irmão de x
+                assert w is not None
                 if w.color is True:  # Caso 1
                     w.color = False
                     x.pai.color = True
                     self.rotacionar_direita(x.pai)
                     w = x.pai.esquerda
+                    assert w is not None
                 # Caso 2
+                assert w.direita is not None
+                assert w.esquerda is not None
                 if w.direita.color is False and w.esquerda.color is False:
                     w.color = True
                     x = x.pai
@@ -292,9 +327,11 @@ class RedBlackTree:
                         w.color = True
                         self.rotacionar_esquerda(w)
                         w = x.pai.esquerda
+                        assert w is not None
                     # Caso 4
                     w.color = x.pai.color
                     x.pai.color = False
+                    assert w.esquerda is not None
                     w.esquerda.color = False
                     self.rotacionar_direita(x.pai)
                     x = self.raiz
@@ -302,14 +339,14 @@ class RedBlackTree:
 
     def _min_valor_nodo(self, nodo: Node) -> Node:
         atual = nodo
-        while atual.esquerda != self.NIL:
+        while atual.esquerda != self.NIL and atual.esquerda is not None:
             atual = atual.esquerda
         return atual
 
     def altura(self) -> int:
         return self._altura_recursiva(self.raiz)
 
-    def _altura_recursiva(self, nodo: Node) -> int:
+    def _altura_recursiva(self, nodo: Optional[Node]) -> int:
         if nodo == self.NIL or nodo is None:
             return -1
         return 1 + max(self._altura_recursiva(nodo.esquerda), self._altura_recursiva(nodo.direita))
@@ -319,9 +356,10 @@ class RedBlackTree:
         self._em_ordem_recursivo(self.raiz, resultado)
         return resultado
 
-    def _em_ordem_recursivo(self, nodo: Node, resultado: List[Consulta]) -> None:
+    def _em_ordem_recursivo(self, nodo: Optional[Node], resultado: List[Consulta]) -> None:
         if nodo != self.NIL and nodo is not None:
             self._em_ordem_recursivo(nodo.esquerda, resultado)
+            assert nodo.consulta is not None
             resultado.append(nodo.consulta)
             self._em_ordem_recursivo(nodo.direita, resultado)
 
@@ -331,13 +369,15 @@ class RedBlackTree:
         self._buscar_todos_recursivo(self.raiz, intervalo, resultado)
         return resultado
 
-    def _buscar_todos_recursivo(self, nodo: Node, intervalo: Intervalo, resultado: List[Consulta]) -> None:
+    def _buscar_todos_recursivo(self, nodo: Optional[Node], intervalo: Intervalo, resultado: List[Consulta]) -> None:
         if nodo == self.NIL or nodo is None:
             return
             
-        if nodo.esquerda != self.NIL and nodo.esquerda.max_end > intervalo.inicio:
+        if nodo.esquerda != self.NIL and nodo.esquerda is not None and nodo.esquerda.max_end > intervalo.inicio:
             self._buscar_todos_recursivo(nodo.esquerda, intervalo, resultado)
             
+        assert nodo.intervalo is not None
+        assert nodo.consulta is not None
         if nodo.intervalo.sobrepoe(intervalo):
             resultado.append(nodo.consulta)
             
@@ -350,10 +390,12 @@ class RedBlackTree:
         self._buscar_por_intervalo_recursivo(self.raiz, inicio, fim, resultado)
         return resultado
 
-    def _buscar_por_intervalo_recursivo(self, nodo: Node, inicio: int, fim: int, resultado: List[Consulta]) -> None:
+    def _buscar_por_intervalo_recursivo(self, nodo: Optional[Node], inicio: int, fim: int, resultado: List[Consulta]) -> None:
         if nodo == self.NIL or nodo is None:
             return
             
+        assert nodo.intervalo is not None
+        assert nodo.consulta is not None
         if nodo.intervalo.inicio >= inicio:
             self._buscar_por_intervalo_recursivo(nodo.esquerda, inicio, fim, resultado)
             
@@ -367,7 +409,7 @@ class RedBlackTree:
         """Retorna o número de nós (consultas) na árvore."""
         return self._tamanho_recursivo(self.raiz)
 
-    def _tamanho_recursivo(self, nodo: Node) -> int:
+    def _tamanho_recursivo(self, nodo: Optional[Node]) -> int:
         if nodo == self.NIL or nodo is None:
             return 0
         return 1 + self._tamanho_recursivo(nodo.esquerda) + self._tamanho_recursivo(nodo.direita)
@@ -381,22 +423,23 @@ class RedBlackTree:
                 self._verificar_rb_cores(self.raiz)[0] and
                 self._verificar_max_end_rb(self.raiz))
 
-    def _verificar_bst_rb(self, nodo: Node, min_val: float, max_val: float) -> bool:
+    def _verificar_bst_rb(self, nodo: Optional[Node], min_val: float, max_val: float) -> bool:
         if nodo == self.NIL or nodo is None:
             return True
+        assert nodo.intervalo is not None
         chave = nodo.intervalo.inicio
         if not (min_val <= chave <= max_val):
             return False
         return (self._verificar_bst_rb(nodo.esquerda, min_val, chave) and
                 self._verificar_bst_rb(nodo.direita, chave, max_val))
 
-    def _verificar_rb_cores(self, nodo: Node) -> tuple[bool, int]:
+    def _verificar_rb_cores(self, nodo: Optional[Node]) -> tuple[bool, int]:
         if nodo == self.NIL or nodo is None:
             return True, 1
             
         if nodo.color is True:
-            if (nodo.esquerda != self.NIL and nodo.esquerda.color is True) or \
-               (nodo.direita != self.NIL and nodo.direita.color is True):
+            if (nodo.esquerda != self.NIL and nodo.esquerda is not None and nodo.esquerda.color is True) or \
+               (nodo.direita != self.NIL and nodo.direita is not None and nodo.direita.color is True):
                 return False, 0
                 
         ok_esq, pretos_esq = self._verificar_rb_cores(nodo.esquerda)
@@ -410,12 +453,13 @@ class RedBlackTree:
             
         return True, pretos_esq + (1 if nodo.color is False else 0)
 
-    def _verificar_max_end_rb(self, nodo: Node) -> bool:
+    def _verificar_max_end_rb(self, nodo: Optional[Node]) -> bool:
         if nodo == self.NIL or nodo is None:
             return True
             
-        val_esq = nodo.esquerda.max_end if nodo.esquerda != self.NIL else 0
-        val_dir = nodo.direita.max_end if nodo.direita != self.NIL else 0
+        val_esq = nodo.esquerda.max_end if (nodo.esquerda is not None and nodo.esquerda != self.NIL) else 0
+        val_dir = nodo.direita.max_end if (nodo.direita is not None and nodo.direita != self.NIL) else 0
+        assert nodo.intervalo is not None
         esperado = max(nodo.intervalo.fim, val_esq, val_dir)
         
         if nodo.max_end != esperado:
