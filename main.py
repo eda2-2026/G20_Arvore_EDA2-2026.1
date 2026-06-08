@@ -56,7 +56,7 @@ def parse_data_input(prompt: str) -> int:
             print("Formato inválido. Use AAAA-MM-DD ou um número inteiro de dias a partir de 2026-01-01.")
 
 
-def gerar_consultas(tamanho: int, ordenado: bool = False, seed: int = None) -> List[Consulta]:
+def gerar_consultas(tamanho: int, ordenado: bool = False, seed: Optional[int] = None) -> List[Consulta]:
 
     """Gera consultas de agendamento com intervalos de tempo."""
     if seed is not None:
