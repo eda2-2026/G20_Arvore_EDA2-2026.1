@@ -6,7 +6,7 @@ Simulador que utiliza Árvores de Intervalos (baseadas em AVL e Rubro-Negra) par
 
 ## Demonstração Visual
 
-[![Vídeo]()]()
+[![Vídeo](https://img.youtube.com/vi/d8NUvTCBEn8/0.jpg)](https://youtu.be/d8NUvTCBEn8)
 
 ## Alunos
 | Matrícula | Aluno |
